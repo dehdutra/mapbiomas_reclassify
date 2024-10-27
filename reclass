@@ -1,0 +1,209 @@
+import ee
+import geemap
+
+ee.Authenticate()
+ee.Initialize(project='your gee project')
+
+# Definir a coleção MapBiomas
+mapbiomas_collection = ee.Image('projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1')
+
+# Criar um mapa interativo
+Map = geemap.Map()
+
+# Definir a paleta de cores e as classes de uso da terra
+palette = [
+    '#1f8d49', '#1f8d49', '#7dc975', '#04381d', '#026975', '#02d659', # Floresta
+    '#ad975a', '#519799', '#d6bc74', '#fc8114', '#ffaa5f', '#ad5100', # Vegetação Herbácea e Arbustiva
+    '#FFFFB2', '#edde8e', '#E974ED', '#C27BA0', '#f5b3c8', '#db7093', '#c71585', '#ff69b4', '#f54ca9', '#d082de', # Agropecuária
+    '#d68fe2', '#9932cc', '#9065d0', '#e6ccff', '#7a5900', '#ffefc3', # Agricultura Perenne
+    '#d4271e', '#ffa07a', '#d4271e', '#9c0027', '#db4d4f', # Área não vegetada
+    '#0000FF', '#2532e4', '#091077', '#ffffff' # Corpo D'água e Não observado
+]
+
+labels = [
+    'Floresta', 'Formação Florestal', 'Formação Savânica', 'Mangue', 'Floresta Alagável', 'Restinga Arbórea',
+    'Vegetação Herbácea e Arbustiva', 'Campo Alagado e Área Pantanosa', 'Formação Campestre', 'Apicum', 'Afloramento Rochoso', 'Restinga Herbácea',
+    'Agropecuária', 'Pastagem', 'Agricultura', 'Lavoura Temporária', 'Soja', 'Cana', 'Arroz', 'Algodão (beta)', 'Outras Lavouras Temporárias', 'Lavoura Perene',
+    'Café', 'Citrus', 'Dendê', 'Outras Lavouras Perenes', 'Silvicultura', 'Mosaico de Usos',
+    'Área Não Vegetada', 'Praia, Duna e Areal', 'Área Urbanizada', 'Mineração', 'Outras Áreas Não Vegetadas',
+    'Corpo D\'água', 'Rio, Lago e Oceano', 'Aquicultura', 'Não Observado'
+]
+
+# Função para adicionar a camada de um ano específico
+def add_layer_by_year(year):
+    # Selecionar a banda correspondente ao ano
+    year_band = mapbiomas_collection.select(f'classification_{year}')
+
+    # Adicionar a camada no mapa
+    Map.addLayer(year_band, {
+        'min': 0,
+        'max': 62,  # As classes de uso do solo no MapBiomas vão de 0 a 62
+        'palette': palette
+    }, f'MapBiomas {year}')
+
+# Adicionar camadas de 1985 a 2023
+for year in range(1985, 2024):
+    add_layer_by_year(year)
+
+# Adicionar uma legenda de cores ao mapa usando geemap
+legend_dict = {
+    'Floresta': '#1f8d49',
+    'Formação Florestal': '#1f8d49',
+    'Formação Savânica': '#7dc975',
+    'Mangue': '#04381d',
+    'Floresta Alagável': '#026975',
+    'Restinga Arbórea': '#02d659',
+    'Vegetação Herbácea e Arbustiva': '#ad975a',
+    'Campo Alagado e Área Pantanosa': '#519799',
+    'Formação Campestre': '#d6bc74',
+    'Apicum': '#fc8114',
+    'Afloramento Rochoso': '#ffaa5f',
+    'Restinga Herbácea': '#ad5100',
+    'Agropecuária': '#FFFFB2',
+    'Pastagem': '#edde8e',
+    'Agricultura': '#E974ED',
+    'Lavoura Temporária': '#C27BA0',
+    'Soja': '#f5b3c8',
+    'Cana': '#db7093',
+    'Arroz': '#c71585',
+    'Algodão (beta)': '#ff69b4',
+    'Outras Lavouras Temporárias': '#f54ca9',
+    'Lavoura Perene': '#d082de',
+    'Café': '#d68fe2',
+    'Citrus': '#9932cc',
+    'Dendê': '#9065d0',
+    'Outras Lavouras Perenes': '#e6ccff',
+    'Silvicultura': '#7a5900',
+    'Mosaico de Usos': '#ffefc3',
+    'Área Não Vegetada': '#d4271e',
+    'Praia, Duna e Areal': '#ffa07a',
+    'Área Urbanizada': '#d4271e',
+    'Mineração': '#9c0027',
+    'Outras Áreas Não Vegetadas': '#db4d4f',
+    'Corpo D\'água': '#0000FF',
+    'Rio, Lago e Oceano': '#2532e4',
+    'Aquicultura': '#091077',
+    'Não Observado': '#ffffff'
+}
+
+Map.add_legend(title="Classes de Uso da Terra - MapBiomas", legend_dict=legend_dict, position='bottomleft')
+
+# Adicionar controle de camadas ao mapa
+Map.add_layer_control()
+
+# Mostrar o mapa
+Map.centerObject(mapbiomas_collection, zoom=4)
+Map
+
+# Função de reclassificação
+def reclassify_mapbiomas(image):
+    # Mapear as classes originais para as novas classes
+    remap_values = {
+    # Áreas Florestais
+    'Áreas Florestais': [1, 5, 6, 49],  # Inclui Formação Florestal, Mangue, Floresta Alagável, Restinga Arbórea
+
+    # Áreas de Savana
+    'Áreas de Savana': [3],  # Formação Savânica
+
+    # Outras Formações Florestais
+    'Outras Formações Florestais': [11, 12, 29, 50],  # Campo Alagado e Área Pantanosa, Formação Campestre, Afloramento Rochoso, Restinga Herbácea
+
+    # Formação Campestre
+    'Formação Campestre': [12],  # Formação campestre
+
+    # Agricultura Mecanizada
+    'Agricultura Mecanizada': [19, 39, 20, 40, 62],  # Lavoura Temporária, Soja, Cana, Arroz, Algodão
+
+    # Agricultura Não Mecanizada
+    'Agricultura Não Mecanizada': [36, 46, 47, 35, 48],  # Lavoura Perene, Café, Citrus, Dendê, Outras Lavouras Perenes
+
+    # Pecuária
+    'Pecuária': [15],  # Pastagem
+
+    # Não Vegetado
+    'Não Vegetado': [23, 24, 30, 25],  # Praia, Duna e Areal, Área Urbanizada, Mineração, Outras Áreas Não Vegetadas
+
+    # Água
+    'Água': [26, 33],  # Rio, Lago e Oceano, Aquicultura
+
+    # Não Observado
+    'Não Observado': [27]  # Áreas sem dados disponíveis
+}
+
+    # Criar uma lista de valores a serem remapeados
+    from_values = []  # Initialize as empty list
+    to_values = []    # Initialize as empty list
+
+    # Atribuir novos valores às classes originais
+    new_class_value = 1
+
+    for class_name, original_classes in remap_values.items():
+        from_values.extend(original_classes)
+        to_values.extend([new_class_value] * len(original_classes))
+        new_class_value += 1
+
+    # Reclassificar a imagem
+    reclassified = image.remap(from_values, to_values) # Fixed indentation here
+
+    return reclassified # Fixed indentation here
+
+# Criar o mapa interativo
+Map = geemap.Map()
+
+# Paleta de cores para as classes reclassificadas
+palette = [
+    '#1f8d49',  # Áreas Florestais
+    '#ffaa00',  # Áreas de Savana
+    '#7dc975',  # Outras Formações Florestais
+    '#8b4513',  # Formação Campestre
+    '#ff4500',  # Agricultura Mecanizada
+    '#4169e1',  # Agricultura Não Mecanizada
+    '#d2691e',  # Pecuária
+    '#ff1493',  # Não Vegetado
+    '#00bfff',  # Água
+    '#808080'   # Não Observado
+]
+
+# Adicionar camadas para todos os anos disponíveis (1985-2022)
+for year in range(1985, 2024):
+    # Selecionar a imagem para o ano específico
+    mapbiomas_year = mapbiomas_collection.select(f'classification_{year}')
+
+    # Reclassificar a imagem do ano
+    reclassified_image = reclassify_mapbiomas(mapbiomas_year)
+
+    # Adicionar a camada reclassificada ao mapa
+    Map.addLayer(reclassified_image, {
+        'min': 1,
+        'max': 12,
+        'palette': palette
+    }, f'Reclassificado {year}')
+
+# Inicializa uma lista para armazenar as imagens reclassificadas
+reclassified_images = []
+
+# Adicionar camadas para todos os anos disponíveis (1985-2023)
+for year in range(1985, 2024):
+    # Selecionar a imagem para o ano específico
+    mapbiomas_year = mapbiomas_collection.select(f'classification_{year}')
+
+    # Reclassificar a imagem do ano
+    reclassified_image = reclassify_mapbiomas(mapbiomas_year)
+
+    # Adicionar a imagem reclassificada à lista
+    reclassified_images.append(reclassified_image)
+
+# Criar uma ImageCollection a partir das imagens reclassificadas
+reclassified_image_collection = ee.ImageCollection(reclassified_images)
+
+# Adicionar reclassify no layer
+Map.add_legend(title="Classes Reclassificadas", legend_dict=legend_dict, position='bottomleft')
+
+# Adicionar controle de camadas ao mapa
+Map.add_layer_control()
+
+# Centralizar o mapa no Brasil
+Map.centerObject(mapbiomas_collection, zoom=4)
+
+# Mostrar o mapa
+Map
