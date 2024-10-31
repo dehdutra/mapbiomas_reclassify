@@ -1,3 +1,6 @@
+*Citation:* Dutra, D. J. (2024). Reclassificação de dados do MAPBIOMAS usando o sistema Google Earth Engine - API Python. Zenodo. https://doi.org/10.5281/zenodo.14019941
+
+
 Este script permite uma visualização interativa e reclassificação das classes de uso da terra do MapBiomas usando Google Earth Engine (GEE) e a biblioteca Geemap. 
 Ele facilita a análise de mudanças de uso da terra no Brasil de 1985 até 2023, utilizando a coleção de dados MapBiomas, e adiciona funcionalidades como legenda personalizada e reclassificação de classes.
 
